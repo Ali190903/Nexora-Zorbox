@@ -12,6 +12,7 @@ import logging
 import os
 from pathlib import Path
 import httpx
+from urllib.parse import urlparse
 
 from .schemas import AnalyzeRequest, AnalyzeResponse, JobState, JobsResponse
 from .state import JobStore
@@ -42,6 +43,7 @@ logging.basicConfig(level=logging.INFO)
 REPORTER_BASE = os.getenv("REPORTER_BASE", "http://localhost:8090")
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 ANALYZER_BASE = os.getenv("ANALYZER_BASE", "http://localhost:8060")
+TI_BASE = os.getenv("TI_BASE", "http://localhost:8070")
 
 
 def _update_gauges() -> None:
@@ -113,6 +115,28 @@ def _maybe_generate_report(job_id: str) -> None:
                             analysis['static'] = ar.json()
     except Exception as e:
         logger.warning({"event": "analyzer_error", "job_id": job.id, "error": str(e)})
+    # TI enrichment
+    try:
+        ti_payload = {"domains": [], "ips": [], "hashes": []}
+        static = analysis.get('static') or {}
+        heur = static.get('heuristics') or {}
+        urls = heur.get('urls_found') or []
+        domains = []
+        for u in urls:
+            try:
+                p = urlparse(u)
+                if p.hostname:
+                    domains.append(p.hostname)
+            except Exception:
+                pass
+        if domains:
+            ti_payload["domains"] = list({d for d in domains})[:20]
+            with httpx.Client(timeout=10) as client:
+                tr = client.post(f"{TI_BASE}/enrich", json=ti_payload)
+                if tr.status_code == 200:
+                    analysis['ti'] = tr.json().get('reputation', {})
+    except Exception as e:
+        logger.warning({"event": "ti_error", "job_id": job.id, "error": str(e)})
     url = f"{REPORTER_BASE}/report"
     with httpx.Client(timeout=10) as client:
         r = client.post(url, json=analysis)
@@ -132,22 +156,17 @@ async def analyze(
     adapters: Optional[str] = Form(default=None),
 ):
     MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
-    file_name: Optional[str] = None
-    file_size: Optional[int] = None
-    file_hash: Optional[str] = None
-
     if file is None and not url:
         return JSONResponse(status_code=400, content={"detail": "file or url is required"})
 
+    # Case 1: direct file upload
     if file is not None:
-        # read small file into memory (MVP); production: stream to storage
         data = await file.read()
         file_name = file.filename
         file_size = len(data)
         if file_size <= 0 or file_size > MAX_UPLOAD_BYTES:
             return JSONResponse(status_code=413, content={"detail": "file size must be 0 < size <= 10MB"})
         file_hash = _sha256_bytes(data)
-        # Minimal archive detection (ZIP) and password requirement
         arch = detect_archive(file_name, data)
         requires_password = False
         archive_type = None
@@ -155,18 +174,13 @@ async def analyze(
             archive_type, is_encrypted, _cnt = arch
             if is_encrypted and not password:
                 requires_password = True
-
-    # Create job
-    job = store.create(file_name=file_name, file_size=file_size, file_sha256=file_hash)
-    if file is not None:
+        job = store.create(file_name=file_name, file_size=file_size, file_sha256=file_hash)
         job.archive_type = archive_type
         job.requires_password = requires_password
         if requires_password:
-            # Do not proceed without password for encrypted archives
             store.set_state(job.id, JobState.failed, error="password required for encrypted archive")
             _update_gauges()
             return AnalyzeResponse(job_id=job.id, accepted=False)
-        # Save uploaded file into storage under job directory
         try:
             base = UPLOAD_DIR / job.id
             rel_name = file_name or "sample.bin"
@@ -177,14 +191,53 @@ async def analyze(
             store.set_state(job.id, JobState.failed, error=f"storage error: {e}")
             _update_gauges()
             return AnalyzeResponse(job_id=job.id, accepted=False)
-    jobs_submitted.inc()
-    _update_gauges()
+        jobs_submitted.inc()
+        _update_gauges()
+        start_ts = time.time()
+        background.add_task(_simulate_pipeline, job.id, start_ts)
+        return AnalyzeResponse(job_id=job.id, accepted=True)
 
-    # Simulate processing in background
-    start_ts = time.time()
-    background.add_task(_simulate_pipeline, job.id, start_ts)
-
-    return AnalyzeResponse(job_id=job.id, accepted=True)
+    # Case 2: URL download
+    if url:
+        try:
+            with httpx.Client(timeout=30.0, follow_redirects=True) as client:
+                try:
+                    hr = client.head(url)
+                    if hr.status_code < 400:
+                        cl = int(hr.headers.get('Content-Length', '0'))
+                        if cl > MAX_UPLOAD_BYTES:
+                            return JSONResponse(status_code=413, content={"detail": "remote file too large (>10MB)"})
+                except Exception:
+                    pass
+                r = client.get(url)
+                r.raise_for_status()
+                data = r.content
+                if len(data) <= 0 or len(data) > MAX_UPLOAD_BYTES:
+                    return JSONResponse(status_code=413, content={"detail": "remote file size must be 0 < size <= 10MB"})
+                fn = None
+                cd = r.headers.get('Content-Disposition')
+                if cd and 'filename=' in cd:
+                    fn = cd.split('filename=')[-1].strip().strip('"')
+                if not fn:
+                    p = urlparse(url)
+                    fn = Path(p.path).name or 'download.bin'
+                job = store.create(file_name=fn, file_size=len(data), file_sha256=_sha256_bytes(data))
+                jobs_submitted.inc()
+                _update_gauges()
+                try:
+                    base = UPLOAD_DIR / job.id
+                    _path, digest, size = save_bytes(base, fn, data)
+                    job.file_sha256 = digest
+                    job.file_size = size
+                except Exception as e:
+                    store.set_state(job.id, JobState.failed, error=f"storage error: {e}")
+                    _update_gauges()
+                    return AnalyzeResponse(job_id=job.id, accepted=False)
+                start_ts = time.time()
+                background.add_task(_simulate_pipeline, job.id, start_ts)
+                return AnalyzeResponse(job_id=job.id, accepted=True)
+        except Exception as e:
+            return JSONResponse(status_code=400, content={"detail": f"download failed: {e}"})
 
 
 @app.get("/result/{job_id}")

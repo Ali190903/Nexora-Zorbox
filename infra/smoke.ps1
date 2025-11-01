@@ -28,10 +28,12 @@ Invoke-WebRequest -UseBasicParsing http://localhost:8090/metrics | Out-Null
 Invoke-WebRequest -UseBasicParsing http://localhost:8070/metrics | Out-Null
 Write-Host 'Metrics OK'
 
+# Use curl for proper multipart file upload on Windows
 Write-Host '== Submitting analyze job =='
 $sample = Join-Path $PSScriptRoot 'sample.bin'
 Set-Content -NoNewline -Path $sample -Value ([System.Text.Encoding]::UTF8.GetBytes('hello zorbox'))
-$resp = Invoke-RestMethod -Method Post -Uri 'http://localhost:8080/analyze' -InFile $sample -ContentType 'multipart/form-data'
+$curlOut = & curl -s -X POST -F "file=@`"$sample`"" http://localhost:8080/analyze
+try { $resp = $curlOut | ConvertFrom-Json } catch { throw "invalid JSON from analyze: $curlOut" }
 if (-not $resp.job_id) { throw 'analyze did not return job_id' }
 Write-Host ('Job ID: ' + $resp.job_id)
 
@@ -44,7 +46,14 @@ for ($i=0; $i -lt 30; $i++) {
 }
 if (-not $res) { throw 'result did not complete in time' }
 Write-Host ('Final state: ' + $res.state)
-if ($res.export) { Write-Host ('Exports: ' + ($res.export | ConvertTo-Json -Compress)) }
+if ($res.export) {
+  Write-Host ('Exports: ' + ($res.export | ConvertTo-Json -Compress))
+  if ($res.export.pdf_url) {
+    $pdfUrl = 'http://localhost:8090' + $res.export.pdf_url
+    Write-Host ('Fetching PDF: ' + $pdfUrl)
+    Invoke-WebRequest -UseBasicParsing $pdfUrl | Out-Null
+  }
+}
 
 Write-Host '== Reporter direct test =='
 $payload = @{ id = 't1'; score = @{ total = 42; rules = @() }; ti = @{ domains = @(); ips = @() } } | ConvertTo-Json -Depth 5
@@ -59,4 +68,3 @@ if (-not $tiResp.reputation) { throw 'ti enrichment failed' }
 Write-Host ('TI reputation sample: ' + ($tiResp.reputation | ConvertTo-Json -Compress))
 
 Write-Host 'All checks passed.' -ForegroundColor Green
-

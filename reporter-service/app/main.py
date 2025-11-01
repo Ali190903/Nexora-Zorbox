@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi import Body
 from fastapi.responses import PlainTextResponse, JSONResponse
 from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from fastapi.staticfiles import StaticFiles
 
 from .pdf import build_pdf
 
@@ -84,10 +85,12 @@ def report(analysis: Dict[str, Any] = Body(...)):
         json.dump(stix, f, ensure_ascii=False, indent=2)
 
     reports_generated.inc()
+    # Expose files over HTTP via static mount
+    http_base = f"/exports/{job_id}"
     return {
-        "json_url": str(json_path),
-        "pdf_url": str(pdf_path),
-        "stix_url": str(stix_path),
+        "json_url": f"{http_base}/report.json",
+        "pdf_url": f"{http_base}/report.pdf",
+        "stix_url": f"{http_base}/report.stix.json",
     }
 
 
@@ -96,3 +99,6 @@ def metrics():
     output = generate_latest(registry)
     return PlainTextResponse(output.decode("utf-8"), media_type=CONTENT_TYPE_LATEST)
 
+# Mount static exports for HTTP access
+ensure_dir(EXPORT_DIR)
+app.mount("/exports", StaticFiles(directory=str(EXPORT_DIR), html=False), name="exports")

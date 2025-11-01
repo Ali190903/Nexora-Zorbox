@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+dist/
+
+# Editor
+.DS_Store
+*.swp
+
+# Generated exports/uploads
+**/exports/
+**/uploads/
+
+# Env
+.env

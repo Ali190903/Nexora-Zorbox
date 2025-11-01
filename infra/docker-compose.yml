@@ -3,7 +3,9 @@ services:
   orchestrator:
     build: ../orchestrator
     environment:
+      - ANALYZER_BASE=http://static_analyzer:8060
       - REPORTER_BASE=http://reporter:8090
+      - TI_BASE=http://ti:8070
     ports:
       - "8080:8080"
   reporter:

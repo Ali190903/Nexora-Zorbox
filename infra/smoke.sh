@@ -38,5 +38,9 @@ echo "Final state: $state"
 
 echo '== Reporter direct test =='
 curl -fsS -H 'Content-Type: application/json' -d '{"id":"t1","score":{"total":42,"rules":[]},"ti":{"domains":[],"ips":[]}}' http://localhost:8090/report | jq -e .pdf_url >/dev/null
+echo '== Fetch exported PDF from reporter if available =='
+pdf_url=$(curl -fsS http://localhost:8080/result/$job_id | jq -r .export.pdf_url)
+if [[ "$pdf_url" != "null" && -n "$pdf_url" ]]; then
+  curl -fsS -o /dev/null -w '%{http_code}\n' "http://localhost:8090$pdf_url" | grep -q '^200$'
+fi
 echo 'All checks passed.'
-
