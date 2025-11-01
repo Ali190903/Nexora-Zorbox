@@ -21,16 +21,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install fastapi uvicorn pydantic prometheus-client reportlab
       - name: Sanity import check
-        run: python - <<'PY'
-import importlib, sys
-mods = ["fastapi","uvicorn","pydantic","prometheus_client","reportlab"]
-for m in mods:
-    try:
-        importlib.import_module(m)
-        print(f"OK {m}")
-    except Exception as e:
-        print(f"FAIL {m}: {e}")
-        sys.exit(1)
-PY
+        run: |
+          python -c "import importlib,sys; mods=['fastapi','uvicorn','pydantic','prometheus_client','reportlab']; [importlib.import_module(m) for m in mods]; print('OK')"
       - name: Unit tests (none yet)
         run: echo "no tests yet"
