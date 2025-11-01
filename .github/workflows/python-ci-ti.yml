@@ -16,14 +16,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install
+      - name: Install dependencies
         run: |
           python -m pip install -U pip
-          python -m pip install .[dev]
-      - name: Lint import
+          python -m pip install fastapi uvicorn pydantic prometheus-client
+      - name: Sanity import check
         run: python - <<'PY'
 import importlib, sys
-for m in ("fastapi","uvicorn","pydantic","prometheus_client"):
+mods = ["fastapi","uvicorn","pydantic","prometheus_client"]
+for m in mods:
     try:
         importlib.import_module(m)
         print(f"OK {m}")
@@ -33,4 +34,3 @@ for m in ("fastapi","uvicorn","pydantic","prometheus_client"):
 PY
       - name: Unit tests (none yet)
         run: echo "no tests yet"
-
