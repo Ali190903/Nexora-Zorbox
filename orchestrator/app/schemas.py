@@ -12,6 +12,7 @@ class JobState(str, Enum):
     reporting = "reporting"
     done = "done"
     failed = "failed"
+    waiting_password = "waiting_password"
 
 
 class AnalyzeRequest(BaseModel):
@@ -33,10 +34,18 @@ class JobSummary(BaseModel):
     file_name: Optional[str] = None
     file_size: Optional[int] = None
     file_sha256: Optional[str] = None
+    file_md5: Optional[str] = None
+    mime_detected: Optional[str] = None
+    mime_mismatch: Optional[bool] = None
+    source_url: Optional[str] = None
+    http_status: Optional[int] = None
+    http_headers: Optional[dict] = None
     archive_type: Optional[str] = None
     requires_password: Optional[bool] = None
+    archive_members: Optional[List[str]] = None
     error: Optional[str] = None
     export: Optional[dict] = None
+    adapters: Optional[List[str]] = None
 
 
 class JobsResponse(BaseModel):

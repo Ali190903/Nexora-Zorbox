@@ -30,6 +30,10 @@ FastAPI-based pipeline coordinator for ZORBOX. Provides job submission, status r
 - Adapters and downstream services are stubbed in this MVP.
 - Reporter integration: set `REPORTER_BASE` (default `http://localhost:8090`).
 - Static analyzer integration: set `ANALYZER_BASE` (default `http://localhost:8060`).
+- Optional OSS sandbox integrations via API:
+  - `CUCKOO_BASE` (e.g., `http://cuckoo:8090`) enables submitting samples to Cuckoo (`tasks/create/file`).
+  - `CAPE_BASE` (e.g., `http://cape:8000`) enables submitting samples to CAPE (`tasks/create/file`).
+  - When set, orchestrator will include these adapters in the sandbox list unless explicit `adapters` are provided in the request.
 
 ## Constraints (MVP)
 - Max upload size: 10 MB (`0 < size ≤ 10MB`). Larger uploads return HTTP 413.

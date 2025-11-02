@@ -17,3 +17,7 @@ scrape_configs:
     static_configs:
       - targets: ['ti:8070']
     metrics_path: /metrics
+  - job_name: 'sandbox-native'
+    static_configs:
+      - targets: ['sandbox:8050']
+    metrics_path: /metrics

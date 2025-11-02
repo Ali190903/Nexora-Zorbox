@@ -6,12 +6,17 @@ services:
       - ANALYZER_BASE=http://static_analyzer:8060
       - REPORTER_BASE=http://reporter:8090
       - TI_BASE=http://ti:8070
+      - SANDBOX_BASE=http://sandbox:8050
     ports:
       - "8080:8080"
+    volumes:
+      - ../orchestrator/app/uploads:/app/uploads
   reporter:
     build: ../reporter-service
     ports:
       - "8090:8090"
+    volumes:
+      - ../reporter-service/app/exports:/app/exports
   ti:
     build: ../ti-enrichment
     environment:
@@ -22,6 +27,10 @@ services:
     build: ../static-analyzer
     ports:
       - "8060:8060"
+  sandbox:
+    build: ../sandbox-native
+    ports:
+      - "8050:8050"
   prometheus:
     image: prom/prometheus:latest
     volumes:
@@ -37,6 +46,8 @@ services:
       - orchestrator
       - reporter
       - ti
+      - static_analyzer
+      - sandbox
   grafana:
     image: grafana/grafana:latest
     environment:

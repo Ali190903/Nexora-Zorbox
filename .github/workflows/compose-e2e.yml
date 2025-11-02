@@ -1,6 +1,7 @@
 name: Compose E2E Smoke
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
   pull_request:
@@ -30,4 +31,3 @@ jobs:
         run: |
           docker compose ps
           docker compose logs --no-color --tail=200
-

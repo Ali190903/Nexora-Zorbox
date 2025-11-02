@@ -32,7 +32,7 @@ Write-Host 'Metrics OK'
 Write-Host '== Submitting analyze job =='
 $sample = Join-Path $PSScriptRoot 'sample.bin'
 Set-Content -NoNewline -Path $sample -Value ([System.Text.Encoding]::UTF8.GetBytes('hello zorbox'))
-$curlOut = & curl -s -X POST -F "file=@`"$sample`"" http://localhost:8080/analyze
+$curlOut = & curl.exe -s -X POST -F "file=@`"$sample`"" http://localhost:8080/analyze
 try { $resp = $curlOut | ConvertFrom-Json } catch { throw "invalid JSON from analyze: $curlOut" }
 if (-not $resp.job_id) { throw 'analyze did not return job_id' }
 Write-Host ('Job ID: ' + $resp.job_id)

@@ -4,7 +4,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from .schemas import JobState, JobSummary
 
@@ -18,12 +18,20 @@ class Job:
     file_name: Optional[str] = None
     file_size: Optional[int] = None
     file_sha256: Optional[str] = None
+    file_md5: Optional[str] = None
+    mime_detected: Optional[str] = None
+    mime_mismatch: Optional[bool] = None
+    source_url: Optional[str] = None
+    http_status: Optional[int] = None
+    http_headers: Optional[dict] = None
     archive_type: Optional[str] = None
     requires_password: Optional[bool] = None
+    archive_members: Optional[List[str]] = None
     error: Optional[str] = None
     export_json_url: Optional[str] = None
     export_pdf_url: Optional[str] = None
     export_stix_url: Optional[str] = None
+    adapters: Optional[List[str]] = None
 
     def to_summary(self) -> JobSummary:
         return JobSummary(
@@ -34,14 +42,23 @@ class Job:
             file_name=self.file_name,
             file_size=self.file_size,
             file_sha256=self.file_sha256,
+            file_md5=self.file_md5,
+            mime_detected=self.mime_detected,
+            mime_mismatch=self.mime_mismatch,
+            source_url=self.source_url,
+            http_status=self.http_status,
+            http_headers=self.http_headers,
             error=self.error,
             archive_type=self.archive_type,
             requires_password=self.requires_password,
+            archive_members=self.archive_members,
             export={
                 "json_url": self.export_json_url,
                 "pdf_url": self.export_pdf_url,
                 "stix_url": self.export_stix_url,
             } if any([self.export_json_url, self.export_pdf_url, self.export_stix_url]) else None,
+            adapters=self.adapters,
+            
         )
 
 

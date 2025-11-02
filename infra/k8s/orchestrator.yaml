@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchestrator
+  namespace: zorbox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orchestrator
+  template:
+    metadata:
+      labels:
+        app: orchestrator
+    spec:
+      containers:
+        - name: orchestrator
+          image: zorbox/orchestrator:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ANALYZER_BASE
+              value: http://static-analyzer.zorbox:8060
+            - name: REPORTER_BASE
+              value: http://reporter.zorbox:8090
+            - name: TI_BASE
+              value: http://ti.zorbox:8070
+            - name: SANDBOX_BASE
+              value: http://sandbox.zorbox:8050
+            - name: UI_ORIGIN
+              value: http://localhost:5173
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/app/uploads
+      volumes:
+        - name: uploads
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchestrator
+  namespace: zorbox
+spec:
+  selector:
+    app: orchestrator
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: orchestrator-deny-egress
+  namespace: zorbox
+spec:
+  podSelector:
+    matchLabels:
+      app: orchestrator
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: zorbox } }
+      ports:
+        - port: 8060
+          protocol: TCP
+        - port: 8070
+          protocol: TCP
+        - port: 8090
+          protocol: TCP
+

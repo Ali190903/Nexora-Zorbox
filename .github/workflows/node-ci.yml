@@ -1,6 +1,7 @@
 name: Node CI (frontend-ui)
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [ main ]
@@ -19,4 +20,3 @@ jobs:
       - run: npm ci || npm i
       - run: npm test --silent
       - run: npm run build --silent
-

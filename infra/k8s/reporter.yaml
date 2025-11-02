@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reporter
+  namespace: zorbox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reporter
+  template:
+    metadata:
+      labels:
+        app: reporter
+    spec:
+      containers:
+        - name: reporter
+          image: zorbox/reporter:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8090
+          env:
+            - name: UI_ORIGIN
+              value: http://localhost:5173
+          volumeMounts:
+            - name: exports
+              mountPath: /app/app/exports
+      volumes:
+        - name: exports
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reporter
+  namespace: zorbox
+spec:
+  selector:
+    app: reporter
+  ports:
+    - name: http
+      port: 8090
+      targetPort: 8090
+

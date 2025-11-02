@@ -11,6 +11,10 @@ RUN pip install --no-cache-dir -U pip && \
 
 COPY app ./app
 
-EXPOSE 8090
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8090"]
+# Create unprivileged user and own exports
+RUN useradd -r -u 10001 -g root svc || adduser --uid 10001 --disabled-password --gecos "" svc || true \
+    && mkdir -p /app/app/exports && chown -R 10001:0 /app
 
+EXPOSE 8090
+USER 10001:0
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8090"]

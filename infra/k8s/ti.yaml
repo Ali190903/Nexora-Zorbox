@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ti
+  namespace: zorbox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ti
+  template:
+    metadata:
+      labels:
+        app: ti
+    spec:
+      containers:
+        - name: ti
+          image: zorbox/ti:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8070
+          env:
+            - name: VT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vt-api
+                  key: api_key
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ti
+  namespace: zorbox
+spec:
+  selector:
+    app: ti
+  ports:
+    - name: http
+      port: 8070
+      targetPort: 8070
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vt-api
+  namespace: zorbox
+type: Opaque
+stringData:
+  api_key: ""
+

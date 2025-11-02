@@ -1,24 +1,33 @@
-## Niyə
+## Summary
 
-Bu dəyişiklik hansı problemi/hədəfi həll edir?
+- [ ] Purpose of this change (feature/fix/refactor/docs)
+- [ ] Related issue/ticket:
 
-## Necə
+## Changes
 
-Qısa texniki izah, əsas modullar, arxitektura dəyişiklikləri.
+- [ ] Orchestrator
+- [ ] Static Analyzer
+- [ ] TI Enrichment
+- [ ] Reporter Service
+- [ ] Frontend UI
+- [ ] Infra / Monitoring
 
-## Test
+## Testing
 
-- [ ] Unit testlər
-- [ ] Lokal çalışdırılıb
-- [ ] Linters/CI keçir
+- [ ] Unit tests (where applicable)
+- [ ] Manual run locally / `docker compose up`
+- [ ] `infra/smoke.sh` / `infra/smoke.ps1` pass
 
-## Rubrika Uyğunluğu
+## Security & Observability
 
-- [ ] Prototip işləkliyi
-- [ ] Sandbox inteqrasiyası
-- [ ] Təhlükəsizlik
-- [ ] Export (JSON/PDF)
-- [ ] Metrics/Monitoring
+- [ ] Prometheus metrics exposed/updated
+- [ ] Logs include relevant events
+- [ ] No secrets committed; uses env/Secrets
 
-## Qeydlər / Screenshot
+## Screenshots / Artifacts (optional)
+
+## Checklist
+
+- [ ] Docs updated (README/CHANGELOG)
+- [ ] CI passing
 
